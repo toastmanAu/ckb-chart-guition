@@ -1,0 +1,3 @@
+[submodule "upstream/ckb-light-esp"]
+	path = upstream/ckb-light-esp
+	url = https://github.com/toastmanAu/ckb-light-esp.git

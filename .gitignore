@@ -1,0 +1,22 @@
+# ESP-IDF build output and fetched registry components (pinned in dependencies.lock)
+firmware/build/
+firmware/managed_components/
+# Generated from sdkconfig.defaults + Kconfig; may hold locally provisioned values
+firmware/sdkconfig
+firmware/sdkconfig.old
+
+# Raw serial/flash logs: they contain Wi-Fi scan results (nearby SSIDs/BSSIDs),
+# LAN addresses and device MACs. Kept locally; results are summarised in docs/.
+logs/
+
+# Local agent/session state
+.remember/
+.claude/settings.local.json
+
+__pycache__/
+*.pyc
+
+# Editor/LSP caches
+.cache/
+.vscode/
+compile_commands.json

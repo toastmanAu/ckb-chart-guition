@@ -1,0 +1,50 @@
+menu "CKB dashboard"
+    config CKB_WIFI_SSID
+        string "Wi-Fi SSID (copied to NVS on first boot)"
+        default ""
+    config CKB_WIFI_PASSWORD
+        string "Wi-Fi password (copied to NVS on first boot; never logged)"
+        default ""
+    config CKB_RPC_URL
+        string "CKB JSON-RPC endpoint"
+        default "https://mainnet.ckb.dev/rpc"
+    config CKB_CHAIN
+        string "Expected chain: mainnet or testnet"
+        default "mainnet"
+    config CKB_RPC_PUBLIC
+        bool "Endpoint is a public RPC service"
+        default y
+    config CKB_DEMO_MODE
+        bool "Start with deterministic demo data"
+        default n
+    config CKB_LC_ENABLE
+        bool "Run the on-device light client (proves the tip over P2P)"
+        default y
+        help
+            Connects to one CKB full node over P2P and proves its tip with
+            RFC 0044 last-state proofs (proof of work, MMR, FlyClient
+            sampling), independently of the JSON-RPC endpoint. The dashboard
+            then shows whether the RPC endpoint agrees with the proven chain.
+    config CKB_LC_HOST
+        string "Light client: full node P2P host"
+        depends on CKB_LC_ENABLE
+        default "192.168.68.105"
+    config CKB_LC_PORT
+        int "Light client: full node P2P port"
+        depends on CKB_LC_ENABLE
+        default 8115
+    config CKB_LC_PEER_ID
+        string "Light client: pinned peer id (68 hex chars, empty = unpinned)"
+        depends on CKB_LC_ENABLE
+        default ""
+        help
+            The tentacle peer id of CKB_LC_HOST (multihash 0x1220 + sha256 of
+            its public key, as connect_live prints). With it the session
+            refuses any other key at that address.
+    config CKB_DEBUG_BOOT_SCAN
+        bool "Debug: run one Wi-Fi scan at boot (bench testing without touch)"
+        default n
+    config CKB_DEBUG_PANIC_TEST
+        bool "Debug: panic once, 60 s after a power-on boot (tests crash recovery)"
+        default n
+endmenu

@@ -1,0 +1,53 @@
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
+CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+CONFIG_LV_COLOR_DEPTH_16=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_MONTSERRAT_16=y
+CONFIG_LV_FONT_MONTSERRAT_20=y
+CONFIG_LV_FONT_MONTSERRAT_24=y
+CONFIG_LV_FONT_MONTSERRAT_32=y
+CONFIG_LV_FONT_MONTSERRAT_40=y
+CONFIG_LV_USE_CHART=y
+CONFIG_LV_USE_ARC=y
+CONFIG_LV_USE_TEXTAREA=y
+CONFIG_LV_USE_KEYBOARD=y
+CONFIG_FREERTOS_HZ=1000
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+# TLS record buffers in PSRAM: internal RAM is shared with Wi-Fi and was the bottleneck.
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y
+# Keep the PSRAM-framebuffer RGB panel running while flash is written (NVS saves).
+# Do NOT enable LCD_RGB_RESTART_IN_VSYNC: with bounce buffers it restarts DMA every
+# frame at a 17 px (FIFO depth + 1) offset, shifting the bottom bar ~17 px with wrap.
+CONFIG_SPIRAM_XIP_FROM_PSRAM=y
+CONFIG_LCD_RGB_ISR_IRAM_SAFE=y
+# Persist panics to the coredump partition so overnight crashes can be read back later.
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y
+
+# A hung task must reboot (with a core dump), not freeze the panel forever.
+CONFIG_ESP_TASK_WDT_PANIC=y
+
+# On-device light client (ckb-light-esp, PSRAM buffers): 500 headers per
+# last-state proof (contiguous proofs cover 250 blocks), 4096 MMR items for
+# sampled proofs over longer gaps.
+CONFIG_CKB_LC_PROOF_HEADERS=500
+CONFIG_CKB_LC_PROOF_ITEMS=4096
+# The full node the light client talks to, and its tentacle peer id (public:
+# multihash of its identity key; connect_live --pin refuses any other key).
+CONFIG_CKB_LC_HOST="192.168.68.105"
+CONFIG_CKB_LC_PORT=8115
+CONFIG_CKB_LC_PEER_ID="12203c897e07d756e492bd46a1f47450fe5e94efcf8cb704f164eb3a8a432cae038b"

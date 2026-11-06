@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CKB Chart MetricSample",
+  "type": "object",
+  "required": [
+    "id",
+    "timestamp_ms",
+    "value",
+    "unit",
+    "source",
+    "quality",
+    "chain",
+    "capture_ms"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "timestamp_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "capture_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "value": {
+      "type": "number"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "LIGHT_VERIFIED",
+        "EXTERNAL_LIGHT_CLIENT",
+        "FULL_NODE_RPC",
+        "PUBLIC_RPC",
+        "DERIVED",
+        "DEMO"
+      ]
+    },
+    "quality": {
+      "enum": [
+        "LIVE",
+        "STALE",
+        "PARTIAL",
+        "ESTIMATE",
+        "UNAVAILABLE"
+      ]
+    },
+    "chain": {
+      "enum": [
+        "mainnet",
+        "testnet"
+      ]
+    },
+    "block_height": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "block_hash": {
+      "type": "string"
+    },
+    "period_sec": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "coverage_ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,36 @@
+idf_component_register(
+    SRCS
+        "app_main.c"
+        "app_config.c"
+        "board.c"
+        "dashboard_ui.c"
+        "light_client_adapter.cpp"
+        "lc_task.c"
+        "lc_badge.c"
+        "metric_core.c"
+        "network.c"
+        "rpc_client.c"
+    INCLUDE_DIRS "." "../../contracts"
+    REQUIRES
+        driver
+        esp_event
+        esp_http_client
+        esp_netif
+        esp_wifi
+        json
+        lvgl
+        nvs_flash
+        esp_lcd
+        esp_lcd_st7701
+        esp_lcd_panel_io_additions
+        esp_lcd_touch_gt911
+        mbedtls
+        espcoredump
+        esp_timer
+        lwip
+        ckb_core
+        ckb_transport
+        ckb_protocol
+        ckb_filter
+        ckb_session
+)
