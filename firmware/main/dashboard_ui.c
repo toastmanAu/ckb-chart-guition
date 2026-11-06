@@ -199,6 +199,14 @@ static void format_compact(char *out, size_t size, double value)
     snprintf(out, size, format, value, SUFFIX[unit]);
 }
 
+/* Signed compact offset: "+21.0k", "-610", "+0". */
+static void format_offset(char *out, size_t size, double value)
+{
+    char body[15]; /* + sign + NUL fits the 16-byte axis labels */
+    format_compact(body, sizeof(body), fabs(value));
+    snprintf(out, size, "%s%s", value < 0.0 ? "-" : "+", body);
+}
+
 static void style_button(lv_obj_t *button, bool active)
 {
     lv_obj_set_style_radius(button, 8, 0);
@@ -301,6 +309,8 @@ static void seed_demo(void)
         add_point(METRIC_TX_PER_BLOCK, tx, timestamp, 17000000 + i, SOURCE_DEMO, QUALITY_LIVE);
         add_point(METRIC_BLOCK_INTERVAL, 10.0 + (i % 5), timestamp, 17000000 + i, SOURCE_DERIVED, QUALITY_LIVE);
         add_point(METRIC_DIFFICULTY, 1.15e15 + i * 1.0e12, timestamp, 17000000 + i, SOURCE_DEMO, QUALITY_LIVE);
+        add_point(METRIC_OCCUPIED_CKB, 5.1841e9 + i * 61.0 + 400.0 * sin(i / 9.0), timestamp, 17000000 + i,
+                  SOURCE_DEMO, QUALITY_LIVE);
     }
     s_demo_seeded = true;
 }
@@ -353,6 +363,10 @@ static void ingest_snapshot(const dashboard_snapshot_t *snapshot)
                               block->timestamp_ms, block->height, SOURCE_DERIVED, QUALITY_LIVE);
                 }
             }
+            if (block->has_dao) {
+                add_point(METRIC_OCCUPIED_CKB, (double)block->dao.u / 1e8,
+                          block->timestamp_ms, block->height, snapshot->source, QUALITY_LIVE);
+            }
             if (block->compact_target) {
                 add_point(METRIC_DIFFICULTY, ckb_compact_target_difficulty(block->compact_target),
                           block->timestamp_ms, block->height, SOURCE_DERIVED, QUALITY_LIVE);
@@ -393,6 +407,7 @@ static const metric_ring_t *page_ring(uint8_t page)
         case 2: return &s_store->series[METRIC_TX_PER_BLOCK];
         case 3: return &s_store->series[METRIC_POOL_PENDING];
         case 4: return &s_store->series[METRIC_DIFFICULTY];
+        case 5: return &s_store->series[METRIC_OCCUPIED_CKB];
         default: return NULL;
     }
 }
@@ -496,9 +511,19 @@ static void update_chart(page_t *page, uint8_t index)
     char top[16];
     char mid[16];
     char bottom[16];
-    format_compact(top, sizeof(top), max);
-    format_compact(mid, sizeof(mid), (max + min) / 2.0);
-    format_compact(bottom, sizeof(bottom), min);
+    if (index == 5) {
+        /* Occupied capacity moves a few ppm per hour on a ~5.18G base, so
+         * absolute labels would all read "5.18G". Label the change since the
+         * window's oldest plotted block instead; the headline has the total. */
+        double base = s_plot[0];
+        format_offset(top, sizeof(top), max - base);
+        format_offset(mid, sizeof(mid), (max + min) / 2.0 - base);
+        format_offset(bottom, sizeof(bottom), min - base);
+    } else {
+        format_compact(top, sizeof(top), max);
+        format_compact(mid, sizeof(mid), (max + min) / 2.0);
+        format_compact(bottom, sizeof(bottom), min);
+    }
     set_axis(page, top, mid, bottom);
     double coverage = metric_ring_coverage(ring, newest, WINDOWS_MS[s_window]) * 100.0;
     set_text_fmt(page->coverage, "%s: %u samples, %u plotted | %.0f%% of window observed",
@@ -560,6 +585,32 @@ static void update_light_client_page(page_t *p)
 #else
     lv_label_set_text(p->coverage, "Light client not compiled in (CONFIG_CKB_LC_ENABLE)");
 #endif
+}
+
+/* Total occupied capacity from the newest header's dao field (u), with its
+ * share of issued capacity (c) and the NervosDAO accumulated rate (ar). */
+static void update_capacity_page(page_t *p)
+{
+    char number[40];
+    char issued[16];
+    const rpc_block_summary_t *tip = s_snapshot.block_count ? &s_snapshot.blocks[0] : NULL;
+    metric_point_t latest;
+    if (!s_snapshot.demo && tip && tip->valid && tip->has_dao && tip->dao.c > 0) {
+        format_integer(number, sizeof(number), tip->dao.u / 100000000ULL);
+        set_text_fmt(p->primary, "%s CKB", number);
+        format_compact(issued, sizeof(issued), (double)tip->dao.c / 1e8);
+        set_text_fmt(p->secondary, "%.2f%% of %s CKB issued | DAO rate %.4fx",
+                     (double)tip->dao.u / (double)tip->dao.c * 100.0, issued,
+                     (double)tip->dao.ar / 1e16);
+    } else if (s_snapshot.demo && latest_point(METRIC_OCCUPIED_CKB, &latest)) {
+        format_integer(number, sizeof(number), (uint64_t)latest.value);
+        set_text_fmt(p->primary, "%s CKB", number);
+        lv_label_set_text(p->secondary, "Demo fixture, not chain data");
+    } else {
+        lv_label_set_text(p->primary, "--");
+        lv_label_set_text(p->secondary, "Waiting for a block header with a dao field");
+    }
+    lv_label_set_text(p->detail, "Occupied CKB from header dao (U). Axis: change in window. RPC data.");
 }
 
 static void update_page_text(uint8_t index)
@@ -653,10 +704,7 @@ static void update_page_text(uint8_t index)
             lv_label_set_text(p->detail, "Difficulty from compact target; not hashrate.");
             break;
         case 5:
-            lv_label_set_text(p->primary, "N/A");
-            lv_label_set_text(p->secondary, "No supported RPC total-capacity field");
-            lv_label_set_text(p->detail, "DAO decoding and supply estimates are deliberately excluded.");
-            lv_label_set_text(p->coverage, s_snapshot.rpc_ok ? "RPC source health: responding" : "RPC source health: unavailable");
+            update_capacity_page(p);
             break;
         case 6:
             update_light_client_page(p);

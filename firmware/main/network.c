@@ -470,6 +470,10 @@ static bool fetch_block(uint64_t height, rpc_block_summary_t *summary)
     if (ok && rpc_json_u64(header, "compact_target", &compact) && compact <= UINT32_MAX) {
         summary->compact_target = (uint32_t)compact;
     }
+    /* Optional: a header without a well-formed dao field still counts as a
+     * block; the capacity page just has nothing for it. */
+    const cJSON *dao = cJSON_GetObjectItemCaseSensitive(header, "dao");
+    summary->has_dao = ok && cJSON_IsString(dao) && ckb_parse_dao(dao->valuestring, &summary->dao);
     summary->valid = ok;
     cJSON_Delete(root);
     return ok;

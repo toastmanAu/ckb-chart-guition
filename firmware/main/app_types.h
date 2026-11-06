@@ -13,6 +13,8 @@ typedef struct {
     uint64_t timestamp_ms;
     uint32_t tx_count;
     uint32_t compact_target;
+    bool has_dao;
+    ckb_dao_t dao;          /* header `dao`: issued c, rate ar, occupied u */
     char hash[HASH_TEXT_LEN];
     char parent_hash[HASH_TEXT_LEN];
     bool valid;

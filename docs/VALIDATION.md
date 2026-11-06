@@ -136,10 +136,10 @@ The live check caught and corrected a truncated genesis constant. Mainnet and te
 
 1. **On-device RPC remains unvalidated.** Provision Wi-Fi locally, then test TLS, live chart values, timeouts, malformed/oversize responses, restricted methods, reconnect, and negative chain/genesis cases.
 2. **Long-term qualification remains open.** Run five-point touch coordinates, 30-minute RGB+Wi-Fi stress, physical power cycles, memory-pressure/backfill tests, and a 24-hour soak. Capture display/board photographs and PCB revision.
-3. **No embedded verified mode.** `EmbeddedFilterAdapter` returns `UNAVAILABLE`; no P2P task is running. RPC data must never be relabeled verified.
+3. ~~**No embedded verified mode.**~~ Superseded 2026-11-06: the on-device light client proves the tip and the RPC hash is compared with it (`docs/LIGHT_CLIENT.md`). RPC data is still never relabeled verified; only the tip comparison is.
 4. **History is small and volatile.** Backfill is 20 blocks per tip change; rings hold 480 points and render 240. Long ranges show honest low coverage. LittleFS/history restore is not implemented despite the reserved partition.
 5. **Provisioning is first-boot/menuconfig based.** NVS persists; no on-screen editor exists for SSID/password/URL. Reprovisioning with build defaults currently requires deliberate flash erasure.
-6. **Some metrics are intentionally excluded.** Capacity/DAO totals, finalized rewards, and total supply remain unavailable instead of using unsupported estimates. Pool/peer values are endpoint-local.
+6. **Some metrics are intentionally excluded.** Finalized rewards and circulating supply remain unavailable instead of using unsupported estimates. Pool/peer values are endpoint-local. (Since 2026-11-06 the Capacity page shows occupied/issued capacity and the DAO rate decoded from header `dao` fields; see `docs/METRICS.md`.)
 
 This delivery passes demo hardware bring-up on the tested Guition, but full RPC and resilience qualification is not complete.
 

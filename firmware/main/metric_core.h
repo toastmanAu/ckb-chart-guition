@@ -16,6 +16,7 @@ typedef enum {
     METRIC_PEERS,
     METRIC_DIFFICULTY,
     METRIC_EPOCH_PROGRESS,
+    METRIC_OCCUPIED_CKB,    /* header dao u, in CKB */
     METRIC_COUNT
 } metric_id_t;
 
@@ -56,6 +57,20 @@ typedef struct {
 } metric_store_t;
 
 bool ckb_parse_hex_u64(const char *text, uint64_t *out);
+
+/* A header's `dao` field (RFC 0023): four little-endian u64, in shannons
+ * except ar. c = total issued capacity, ar = NervosDAO accumulated rate
+ * (10^16 at genesis), s = secondary-issuance bookkeeping, u = total
+ * occupied capacity. */
+typedef struct {
+    uint64_t c;
+    uint64_t ar;
+    uint64_t s;
+    uint64_t u;
+} ckb_dao_t;
+
+/* Decode "0x" + exactly 64 hex digits. On failure *out is left untouched. */
+bool ckb_parse_dao(const char *text, ckb_dao_t *out);
 /* Decimal with ',' every three digits counted from the right (20,919,340).
  * Falls back to plain digits when `size` cannot hold the separators. */
 void ckb_format_grouped_u64(char *out, size_t size, uint64_t value);

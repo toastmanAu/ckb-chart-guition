@@ -106,6 +106,47 @@ static void test_grouped_format(void)
     assert(strcmp(tiny, "12345") == 0);
 }
 
+/* Header `dao` field: C, AR, S, U as four little-endian u64 (RFC 0023).
+ * Vectors are real mainnet headers from get_header_by_number. */
+static void test_dao(void)
+{
+    ckb_dao_t dao;
+    /* Genesis: 33.6B CKB issued, AR exactly 10^16. */
+    assert(ckb_parse_dao("0x8874337e541ea12e0000c16ff286230029bfa3320800000000710b00c0fefe06", &dao));
+    assert(dao.c == 3360000145238488200ULL);
+    assert(dao.ar == 10000000000000000ULL);
+    assert(dao.s == 35209330473ULL);
+    assert(dao.u == 504120308900000000ULL);
+    /* Block 20,940,681. */
+    assert(ckb_parse_dao("0xd6a3ed86955f8f5bd329a4d588e42a00cdc6dd665a04950a00a0839ce5c63107", &dao));
+    assert(dao.c == 6597597074939552726ULL);
+    assert(dao.ar == 12073225372838355ULL);
+    assert(dao.s == 762520498228545229ULL);
+    assert(dao.u == 518414121600000000ULL);
+    /* Upper-case hex is still hex. */
+    assert(ckb_parse_dao("0xD6A3ED86955F8F5BD329A4D588E42A00CDC6DD665A04950A00A0839CE5C63107", &dao));
+    assert(dao.u == 518414121600000000ULL);
+
+    /* Malformed input leaves *out untouched. */
+    ckb_dao_t keep = {1, 2, 3, 4};
+    dao = keep;
+    const char *bad[] = {
+        NULL,
+        "",
+        "0x",
+        "d6a3ed86955f8f5bd329a4d588e42a00cdc6dd665a04950a00a0839ce5c63107",     /* no 0x */
+        "0xd6a3ed86955f8f5bd329a4d588e42a00cdc6dd665a04950a00a0839ce5c6310",    /* 63 digits */
+        "0xd6a3ed86955f8f5bd329a4d588e42a00cdc6dd665a04950a00a0839ce5c6310700", /* 66 digits */
+        "0xd6a3ed86955f8f5bd329a4d588e42a00cdc6dd665a04950a00a0839ce5c631g7",   /* non-hex */
+        "0Xd6a3ed86955f8f5bd329a4d588e42a00cdc6dd665a04950a00a0839ce5c63107",   /* 0X */
+    };
+    for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
+        assert(!ckb_parse_dao(bad[i], &dao));
+        assert(memcmp(&dao, &keep, sizeof(dao)) == 0);
+    }
+    assert(!ckb_parse_dao("0xd6a3ed86955f8f5bd329a4d588e42a00cdc6dd665a04950a00a0839ce5c63107", NULL));
+}
+
 int main(void)
 {
     test_hex();
@@ -113,6 +154,7 @@ int main(void)
     test_ring();
     test_downsample();
     test_grouped_format();
+    test_dao();
     puts("test_metric_core: all tests passed");
     return 0;
 }

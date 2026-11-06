@@ -21,6 +21,46 @@ bool ckb_parse_hex_u64(const char *text, uint64_t *out)
     return true;
 }
 
+static int hex_nibble(char ch)
+{
+    if (ch >= '0' && ch <= '9') {
+        return ch - '0';
+    }
+    if (ch >= 'a' && ch <= 'f') {
+        return ch - 'a' + 10;
+    }
+    if (ch >= 'A' && ch <= 'F') {
+        return ch - 'A' + 10;
+    }
+    return -1;
+}
+
+bool ckb_parse_dao(const char *text, ckb_dao_t *out)
+{
+    if (!text || !out || text[0] != '0' || text[1] != 'x') {
+        return false;
+    }
+    uint64_t words[4] = {0};
+    const char *hex = text + 2;
+    for (size_t byte = 0; byte < 32; ++byte) {
+        int hi = hex_nibble(hex[2 * byte]);
+        int lo = hi < 0 ? -1 : hex_nibble(hex[2 * byte + 1]);
+        if (lo < 0) {
+            return false; /* also catches an early '\0' */
+        }
+        /* Little-endian: byte k of a word is bits 8k..8k+7. */
+        words[byte / 8] |= (uint64_t)((hi << 4) | lo) << (8 * (byte % 8));
+    }
+    if (hex[64] != '\0') {
+        return false;
+    }
+    out->c = words[0];
+    out->ar = words[1];
+    out->s = words[2];
+    out->u = words[3];
+    return true;
+}
+
 bool ckb_parse_hex_double(const char *text, double *out)
 {
     uint64_t value;
