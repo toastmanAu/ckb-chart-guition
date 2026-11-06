@@ -4,13 +4,12 @@ idf_component_register(
         "app_config.c"
         "board.c"
         "dashboard_ui.c"
-        "light_client_adapter.cpp"
         "lc_task.c"
         "lc_badge.c"
         "metric_core.c"
         "network.c"
         "rpc_client.c"
-    INCLUDE_DIRS "." "../../contracts"
+    INCLUDE_DIRS "."
     REQUIRES
         driver
         esp_event

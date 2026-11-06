@@ -42,9 +42,8 @@ compares that proof with the RPC endpoint.
 - **Buffers**
   - About 3.3 MiB of PSRAM, allocated once at boot: rx 768 KiB, block 583, zbuf 583,
     scratch 384, lsp 885 and filter 64.
-- **Old adapter stub**
-  - `light_client_adapter.cpp` (`EmbeddedFilterAdapter`) is the old stub that always returns
-    `UNAVAILABLE`. It is still compiled but unused, and can be removed.
+- **Interface:** `lc_task.h` (`lc_task_start`, `lc_task_status`). It replaced the handoff's
+  proposed `ILightClientAdapter` boundary and its `UNAVAILABLE` stub, both removed.
 
 ## Badge (`firmware/main/lc_badge.c`, tests in `tests/test_lc_badge.c`)
 

@@ -1,6 +1,6 @@
 # CKB Chart — Guition ESP32-4848S040C LVGL dashboard
 
-**Status (2026-11-04 repair): RPC verified live against public mainnet; Wi-Fi scan + connect verified on the Guition; prior crash loop root-caused (network-task stack overflow) and fixed. Display flicker, layout and bottom-bar alignment confirmed on device. Touch-driven Wi-Fi provisioning and long soaks still need hands-on checks. See docs/VALIDATION.md.**
+**Status (2026-11-06): live on the Guition against public mainnet RPC, with the on-device light client proving each new tip from a pinned LAN peer and the RPC hash matching it in the device log. The device resumes from a checkpoint saved in NVS after a reboot; the badge policy is unit- and mutation-tested. Still open: a 24-hour soak with the light client running, a real `RPC MISMATCH` against a lying endpoint, testnet, and touch-driven Wi-Fi provisioning end to end. The board needs a powered hub or dedicated supply (it browns out on an unpowered one). See docs/LIGHT_CLIENT.md and docs/VALIDATION.md.**
 
 This is an observation-only 480x480 Nervos CKB dashboard. It has seven screens (Overview, Blocks, Transactions, Network, Economics, Capacity, Client), bottom navigation, swipe navigation, bounded charts, time-window controls, deterministic demo fixtures, and JSON-RPC mode. No wallet keys or signing are supported.
 
