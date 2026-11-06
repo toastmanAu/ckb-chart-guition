@@ -10,3 +10,6 @@ ${CC:-cc} -std=c11 -Wall -Wextra -Werror \
 ${CC:-cc} -std=c11 -Wall -Wextra -Werror \
   tests/test_lc_badge.c firmware/main/lc_badge.c -o "$workdir/test_lc_badge"
 "$workdir/test_lc_badge"
+${CC:-cc} -std=c11 -Wall -Wextra -Werror \
+  tests/test_screenshot_stream.c firmware/main/screenshot_stream.c -o "$workdir/test_screenshot_stream"
+"$workdir/test_screenshot_stream"

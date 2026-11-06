@@ -18,6 +18,10 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "lvgl.h"
+#if CONFIG_CKB_DEBUG_SCREENSHOTS
+#include "freertos/queue.h"
+#include "screenshot_stream.h"
+#endif
 
 #define COLOR_BG 0x081014
 #define COLOR_PANEL 0x101c22
@@ -1185,6 +1189,11 @@ static void create_shell(void)
     show_page(0);
 }
 
+#if CONFIG_CKB_DEBUG_SCREENSHOTS
+static void shot_init(void);
+static void shot_step(void);
+#endif
+
 static void ui_task(void *arg)
 {
     (void)arg;
@@ -1234,6 +1243,9 @@ static void ui_task(void *arg)
      * and did not panic. Now a stall of CONFIG_ESP_TASK_WDT_TIMEOUT_S reboots
      * the board and leaves a core dump naming the stuck call. */
     ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
+#if CONFIG_CKB_DEBUG_SCREENSHOTS
+    shot_init();
+#endif
     while (true) {
         esp_task_wdt_reset();
         static dashboard_snapshot_t snapshot;
@@ -1247,6 +1259,9 @@ static void ui_task(void *arg)
             refresh_ui();
             refresh = tick_ms();
         }
+#if CONFIG_CKB_DEBUG_SCREENSHOTS
+        shot_step();
+#endif
         lv_timer_handler();
         xSemaphoreGiveRecursive(s_lvgl_lock);
         if (tick_ms() - last_memory_log >= 30000) {
@@ -1266,6 +1281,106 @@ static void ui_task(void *arg)
         vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
+
+#if CONFIG_CKB_DEBUG_SCREENSHOTS
+/* Debug screen captures (Kconfig CKB_DEBUG_SCREENSHOTS). The UI task shows
+ * each page and renders it into a private PSRAM buffer with lv_snapshot
+ * (fast, under the LVGL lock); shot_task then prints it as SHOT_* lines.
+ * Console output busy-waits on the UART, so shot_task runs at idle priority:
+ * above idle it would starve IDLE and trip the task watchdog. */
+static uint16_t *s_shot_px;
+static lv_draw_buf_t s_shot_buf;
+static QueueHandle_t s_shot_jobs;
+static SemaphoreHandle_t s_shot_done;
+static int8_t s_shot_page = -1;      /* page being captured; -1 = idle */
+static bool s_shot_streaming;
+static uint8_t s_shot_return_page;
+static uint64_t s_shot_due_ms;
+
+static void shot_emit(const char *line, void *ctx)
+{
+    (void)ctx;
+    printf("%s\n", line);
+}
+
+static void shot_task(void *arg)
+{
+    (void)arg;
+    uint8_t page;
+    for (;;) {
+        if (xQueueReceive(s_shot_jobs, &page, portMAX_DELAY) == pdTRUE) {
+            shot_stream(page, s_shot_px, s_shot_buf.header.w, s_shot_buf.header.h,
+                        s_shot_buf.header.stride / 2, shot_emit, NULL);
+            fflush(stdout);
+            xSemaphoreGive(s_shot_done);
+        }
+    }
+}
+
+static void shot_init(void)
+{
+    size_t size = (size_t)BOARD_HRES * BOARD_VRES * 2;
+    s_shot_px = heap_caps_aligned_alloc(64, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    s_shot_jobs = xQueueCreate(1, sizeof(uint8_t));
+    s_shot_done = xSemaphoreCreateBinary();
+    if (!s_shot_px || !s_shot_jobs || !s_shot_done ||
+        lv_draw_buf_init(&s_shot_buf, BOARD_HRES, BOARD_VRES, LV_COLOR_FORMAT_RGB565, 0,
+                         s_shot_px, size) != LV_RESULT_OK ||
+        xTaskCreatePinnedToCore(shot_task, "shot", 4096, NULL, tskIDLE_PRIORITY, NULL, 1) != pdTRUE) {
+        ESP_LOGE(TAG, "screen capture disabled: setup failed");
+        s_shot_due_ms = UINT64_MAX;
+        return;
+    }
+    s_shot_due_ms = tick_ms() + (uint64_t)CONFIG_CKB_DEBUG_SCREENSHOTS_FIRST_S * 1000ULL;
+    ESP_LOGI(TAG, "screen capture armed: first round in %d s", CONFIG_CKB_DEBUG_SCREENSHOTS_FIRST_S);
+}
+
+static void shot_round_end(const char *why)
+{
+    show_page(s_shot_return_page);
+    s_shot_page = -1;
+    s_shot_due_ms = tick_ms() + (uint64_t)CONFIG_CKB_DEBUG_SCREENSHOTS_PERIOD_S * 1000ULL;
+    esp_log_level_set("*", CONFIG_LOG_DEFAULT_LEVEL);
+    ESP_LOGI(TAG, "screen capture round %s", why);
+}
+
+/* Called by the UI task with the LVGL lock held. */
+static void shot_step(void)
+{
+    if (s_shot_page < 0) {
+        if (tick_ms() < s_shot_due_ms) {
+            return;
+        }
+        if (!s_snapshot.demo && !s_snapshot.rpc_ok) {
+            s_shot_due_ms = tick_ms() + 10000; /* wait for live data */
+            return;
+        }
+        s_shot_return_page = s_page;
+        s_shot_page = 0;
+        ESP_LOGI(TAG, "screen capture round starting (logs quiet until done)");
+        esp_log_level_set("*", ESP_LOG_WARN); /* keep the console for SHOT_* */
+    } else if (s_shot_streaming) {
+        if (xSemaphoreTake(s_shot_done, 0) != pdTRUE) {
+            return;
+        }
+        s_shot_streaming = false;
+        if (++s_shot_page >= 7) {
+            shot_round_end("done");
+            return;
+        }
+    }
+    show_page((uint8_t)s_shot_page);
+    refresh_ui();
+    lv_obj_update_layout(lv_screen_active());
+    if (lv_snapshot_take_to_draw_buf(lv_screen_active(), LV_COLOR_FORMAT_RGB565, &s_shot_buf) != LV_RESULT_OK) {
+        shot_round_end("aborted: snapshot failed");
+        return;
+    }
+    uint8_t page = (uint8_t)s_shot_page;
+    xQueueSend(s_shot_jobs, &page, 0);
+    s_shot_streaming = true;
+}
+#endif
 
 esp_err_t dashboard_ui_start(QueueHandle_t snapshots, QueueHandle_t controls)
 {

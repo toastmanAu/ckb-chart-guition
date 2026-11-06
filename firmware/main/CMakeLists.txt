@@ -9,6 +9,7 @@ idf_component_register(
         "metric_core.c"
         "network.c"
         "rpc_client.c"
+        "screenshot_stream.c"
     INCLUDE_DIRS "."
     REQUIRES
         driver

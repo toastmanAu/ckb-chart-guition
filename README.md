@@ -4,6 +4,39 @@
 
 This is an observation-only 480x480 Nervos CKB dashboard. It has seven screens (Overview, Blocks, Transactions, Network, Economics, Capacity, Client), bottom navigation, swipe navigation, bounded charts, time-window controls, deterministic demo fixtures, and JSON-RPC mode. No wallet keys or signing are supported.
 
+## Screens
+
+Captured from the running board on mainnet (pixel-exact framebuffer renders, not photos). The header label reads `PROVEN` because the public RPC's tip hash matches the one the device proved itself.
+
+<table>
+<tr>
+<td><img src="docs/images/overview.png" width="240" alt="Overview: tip height, epoch progress, block interval chart"></td>
+<td><img src="docs/images/blocks.png" width="240" alt="Blocks: block interval with window average"></td>
+<td><img src="docs/images/transactions.png" width="240" alt="Transactions: transactions per block"></td>
+</tr>
+<tr>
+<td align="center">Overview</td><td align="center">Blocks</td><td align="center">Transactions</td>
+</tr>
+<tr>
+<td><img src="docs/images/network.png" width="240" alt="Network: pending pool, peers, median fee"></td>
+<td><img src="docs/images/economics.png" width="240" alt="Economics: difficulty from compact target"></td>
+<td><img src="docs/images/capacity.png" width="240" alt="Capacity: occupied CKB from header DAO field"></td>
+</tr>
+<tr>
+<td align="center">Network</td><td align="center">Economics</td><td align="center">Capacity</td>
+</tr>
+<tr>
+<td><img src="docs/images/client.png" width="240" alt="Client: on-device light client, proven tip and RPC comparison"></td>
+<td colspan="2">
+
+**Client** shows the on-device light client: the tip it proved over P2P, how long ago, whether the RPC endpoint agrees, and the session details.
+
+</td>
+</tr>
+</table>
+
+To regenerate them, build with `CONFIG_CKB_DEBUG_SCREENSHOTS=y` (in a separate build directory), flash, log the serial port, then run `tools/screenshot_decode.py <log> docs/images --names overview,blocks,transactions,network,economics,capacity,client`. The board cycles through every page and prints each as checksummed text lines; the decoder writes only captures whose FNV-1a hash matches.
+
 ## Trust model
 
 - `DEMO`: deterministic synthetic fixtures, never live chain data.

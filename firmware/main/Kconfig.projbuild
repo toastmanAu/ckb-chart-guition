@@ -44,6 +44,25 @@ menu "CKB dashboard"
     config CKB_DEBUG_BOOT_SCAN
         bool "Debug: run one Wi-Fi scan at boot (bench testing without touch)"
         default n
+    config CKB_DEBUG_SCREENSHOTS
+        bool "Debug: stream screen captures of every page over the console"
+        default n
+        select LV_USE_SNAPSHOT
+        help
+            After CKB_DEBUG_SCREENSHOTS_FIRST_S seconds, and then every
+            CKB_DEBUG_SCREENSHOTS_PERIOD_S, show each page in turn, render it
+            with lv_snapshot and print it as SHOT_* text lines (format in
+            screenshot_stream.h). tools/screenshot_decode.py rebuilds PNGs
+            from a serial log. Uses a 450 KiB PSRAM buffer. For README images,
+            not for normal use.
+    config CKB_DEBUG_SCREENSHOTS_FIRST_S
+        int "Debug: seconds after boot before the first capture round"
+        depends on CKB_DEBUG_SCREENSHOTS
+        default 300
+    config CKB_DEBUG_SCREENSHOTS_PERIOD_S
+        int "Debug: seconds between capture rounds"
+        depends on CKB_DEBUG_SCREENSHOTS
+        default 900
     config CKB_DEBUG_PANIC_TEST
         bool "Debug: panic once, 60 s after a power-on boot (tests crash recovery)"
         default n
