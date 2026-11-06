@@ -77,6 +77,10 @@ void ckb_format_grouped_u64(char *out, size_t size, uint64_t value);
 bool ckb_parse_hex_double(const char *text, double *out);
 double ckb_epoch_progress(uint64_t tip, uint64_t start, uint64_t length);
 double ckb_compact_target_difficulty(uint32_t compact_target);
+/* Chart frame for n >= 1 values: 8% headroom each side (a flat series gets
+ * a band of 10% of its magnitude, or 1 at zero). Bars start at zero, and
+ * padding never takes the frame below zero when no value is below zero. */
+void ckb_chart_bounds(const double *values, size_t n, bool bar, double *lo, double *hi);
 size_t ckb_downsample_mean(const double *input, size_t input_count,
                            double *output, size_t output_cap);
 

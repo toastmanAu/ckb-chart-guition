@@ -147,6 +147,43 @@ static void test_dao(void)
     assert(!ckb_parse_dao("0xd6a3ed86955f8f5bd329a4d588e42a00cdc6dd665a04950a00a0839ce5c63107", NULL));
 }
 
+/* Chart frame: 8% headroom, but padding never invents values below zero
+ * when the data never goes below zero. */
+static void test_chart_bounds(void)
+{
+    double lo, hi;
+    /* Block interval 1..37 s: padding would reach -1.88; clamp to 0. */
+    const double interval[] = {1.0, 37.0, 12.0};
+    ckb_chart_bounds(interval, 3, false, &lo, &hi);
+    assert(lo == 0.0 && fabs(hi - (37.0 + 36.0 * 0.08)) < 1e-9);
+    /* Far from zero (difficulty): ordinary padding both ways. */
+    const double diff[] = {852.0, 853.0};
+    ckb_chart_bounds(diff, 2, false, &lo, &hi);
+    assert(fabs(lo - 851.92) < 1e-9 && fabs(hi - 853.08) < 1e-9);
+    /* Data that really goes negative (capacity change) keeps its padding. */
+    const double delta[] = {0.0, -610.0, 3000.0};
+    ckb_chart_bounds(delta, 3, false, &lo, &hi);
+    assert(fabs(lo - (-610.0 - 3610.0 * 0.08)) < 1e-9);
+    /* Bars always start at zero for non-negative data. */
+    const double tx[] = {1.0, 4.0};
+    ckb_chart_bounds(tx, 2, true, &lo, &hi);
+    assert(lo == 0.0 && fabs(hi - 4.24) < 1e-9);
+    /* Flat series: a band around the value, still not below zero. */
+    const double flat0[] = {0.0, 0.0};
+    ckb_chart_bounds(flat0, 2, false, &lo, &hi);
+    assert(lo == 0.0 && hi == 1.0);
+    const double flat5[] = {5.0, 5.0};
+    ckb_chart_bounds(flat5, 2, false, &lo, &hi);
+    assert(fabs(lo - 4.5) < 1e-9 && fabs(hi - 5.5) < 1e-9);
+    const double flatneg[] = {-2.0, -2.0};
+    ckb_chart_bounds(flatneg, 2, false, &lo, &hi);
+    assert(fabs(lo + 2.2) < 1e-9 && fabs(hi + 1.8) < 1e-9);
+    /* Always a non-empty range. */
+    const double one[] = {0.0};
+    ckb_chart_bounds(one, 1, false, &lo, &hi);
+    assert(hi > lo);
+}
+
 int main(void)
 {
     test_hex();
@@ -155,6 +192,7 @@ int main(void)
     test_downsample();
     test_grouped_format();
     test_dao();
+    test_chart_bounds();
     puts("test_metric_core: all tests passed");
     return 0;
 }

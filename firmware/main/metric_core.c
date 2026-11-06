@@ -95,6 +95,22 @@ double ckb_compact_target_difficulty(uint32_t compact)
     return ldexp(1.0 / (double)mantissa, power);
 }
 
+void ckb_chart_bounds(const double *values, size_t n, bool bar, double *lo, double *hi)
+{
+    double min = values[0];
+    double max = values[0];
+    for (size_t i = 1; i < n; ++i) {
+        min = fmin(min, values[i]);
+        max = fmax(max, values[i]);
+    }
+    double pad = max > min ? (max - min) * 0.08 : (fabs(max) > 0.0 ? fabs(max) * 0.1 : 1.0);
+    *lo = min - pad;
+    *hi = max + pad;
+    if (min >= 0.0 && (bar || *lo < 0.0)) {
+        *lo = 0.0;
+    }
+}
+
 size_t ckb_downsample_mean(const double *input, size_t input_count,
                            double *output, size_t output_cap)
 {

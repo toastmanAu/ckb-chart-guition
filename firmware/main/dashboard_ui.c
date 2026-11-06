@@ -279,7 +279,11 @@ static void chart_event(lv_event_t *event)
         lv_coord_t scaled = lv_chart_get_y_array(page->chart, page->series)[point];
         double value = page->chart_min + (page->chart_max - page->chart_min) * scaled / CHART_RANGE;
         char text[16];
-        format_compact(text, sizeof(text), value);
+        if (page == &s_pages[5]) {
+            format_offset(text, sizeof(text), value); /* capacity plots change */
+        } else {
+            format_compact(text, sizeof(text), value);
+        }
         set_text_fmt(page->coverage, "Point %ld of %lu: %s", (long)point + 1,
                      (unsigned long)lv_chart_get_point_count(page->chart), text);
     }
@@ -493,17 +497,18 @@ static void update_chart(page_t *page, uint8_t index)
         s_plot[1] = s_plot[0]; /* a line needs two points */
         plotted = 2;
     }
-    double min = s_plot[0];
-    double max = s_plot[0];
-    for (size_t i = 1; i < plotted; ++i) {
-        min = fmin(min, s_plot[i]);
-        max = fmax(max, s_plot[i]);
+    if (index == 5) {
+        /* Occupied capacity moves a few ppm per hour on a ~5.18G base, so
+         * absolute labels would all read "5.18G". Plot the change since the
+         * window's oldest plotted block; the headline has the total. */
+        double base = s_plot[0];
+        for (size_t i = 0; i < plotted; ++i) {
+            s_plot[i] -= base;
+        }
     }
-    /* Headroom so the line never sits on the frame; a flat series gets a
-     * band around its value. Bars start from zero to keep heights honest. */
-    double pad = max > min ? (max - min) * 0.08 : (fabs(max) > 0.0 ? fabs(max) * 0.1 : 1.0);
-    min = lv_chart_get_type(page->chart) == LV_CHART_TYPE_BAR && min >= 0.0 ? 0.0 : min - pad;
-    max += pad;
+    double min;
+    double max;
+    ckb_chart_bounds(s_plot, plotted, lv_chart_get_type(page->chart) == LV_CHART_TYPE_BAR, &min, &max);
     page->chart_min = min;
     page->chart_max = max;
     lv_chart_set_point_count(page->chart, (uint32_t)plotted);
@@ -516,13 +521,9 @@ static void update_chart(page_t *page, uint8_t index)
     char mid[16];
     char bottom[16];
     if (index == 5) {
-        /* Occupied capacity moves a few ppm per hour on a ~5.18G base, so
-         * absolute labels would all read "5.18G". Label the change since the
-         * window's oldest plotted block instead; the headline has the total. */
-        double base = s_plot[0];
-        format_offset(top, sizeof(top), max - base);
-        format_offset(mid, sizeof(mid), (max + min) / 2.0 - base);
-        format_offset(bottom, sizeof(bottom), min - base);
+        format_offset(top, sizeof(top), max);
+        format_offset(mid, sizeof(mid), (max + min) / 2.0);
+        format_offset(bottom, sizeof(bottom), min);
     } else {
         format_compact(top, sizeof(top), max);
         format_compact(mid, sizeof(mid), (max + min) / 2.0);
@@ -643,7 +644,15 @@ static void update_page_text(uint8_t index)
                 lv_label_set_text(p->primary, "--");
                 lv_label_set_text(p->secondary, "Waiting for a trusted RPC response");
             }
-            lv_label_set_text(p->detail, "Chart: block interval (s). Tip is RPC data, not light-client verified.");
+            /* The values are RPC data either way; the light client only says
+             * whether the RPC's chain is the one it proved. */
+            if (!s_snapshot.demo && s_snapshot.lc_badge == LC_BADGE_PROVEN) {
+                lv_label_set_text(p->detail, "Chart: block interval (s). RPC data; its chain matches the light-client proof.");
+            } else if (!s_snapshot.demo && s_snapshot.lc_badge == LC_BADGE_RPC_MISMATCH) {
+                lv_label_set_text(p->detail, "Chart: block interval (s). RPC data DISAGREES with the light-client proof.");
+            } else {
+                lv_label_set_text(p->detail, "Chart: block interval (s). Tip is RPC data, not light-client verified.");
+            }
             break;
         case 1:
             if (latest_point(METRIC_BLOCK_INTERVAL, &latest)) {
