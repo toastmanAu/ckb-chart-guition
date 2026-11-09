@@ -126,16 +126,16 @@ The live check caught and corrected a truncated genesis constant. Mainnet and te
 | DATA01 ring wrap/downsample | PASS (host) | Native C test passed. |
 | DATA02 epoch boundary | PASS (host) | Zero length, before start, completion, and clamp tested. |
 | DATA03 tx including cellbase | PASS (host schema) | Live response array counted; no device/RPC chart comparison. |
-| DATA04 reorg | PARTIAL PASS (host) | Height invalidation tested; live reorg/backfill not exercised. |
+| DATA04 reorg | PASS (host + live LC) | Height invalidation tested on host; 14 live one-block tip reorgs detected and recovered by the light client in the 2026-11-09 soak. Chart backfill across a reorg not separately inspected. |
 | LC01–LC03 | NOT RUN / UNAVAILABLE | Upstream integration rejected at audit gate. |
 | UI01 seven screens/controls | PASS (interactive) | All seven screens, buttons, and swipes confirmed by user. |
 | OFF01 offline resume | NOT RUN | Reconnect/stale code compiled; no Wi-Fi disconnect/physical power-cycle test. |
-| SOAK01 24-hour soak | NOT RUN | No 24-hour run, leak test, or reconnect log. |
+| SOAK01 24-hour soak | PASS | 59.7 h (2026-11-07 00:16 → 11-09 11:57), no resets, flat heap. See the 2026-11-09 section. |
 
 ## Unresolved issues and limitations
 
 1. **On-device RPC remains unvalidated.** Provision Wi-Fi locally, then test TLS, live chart values, timeouts, malformed/oversize responses, restricted methods, reconnect, and negative chain/genesis cases.
-2. **Long-term qualification remains open.** Run five-point touch coordinates, 30-minute RGB+Wi-Fi stress, physical power cycles, memory-pressure/backfill tests, and a 24-hour soak. Capture display/board photographs and PCB revision.
+2. **Long-term qualification remains open.** Run five-point touch coordinates, 30-minute RGB+Wi-Fi stress, physical power cycles, memory-pressure/backfill tests (the 24-hour soak passed 2026-11-09, see below). Capture display/board photographs and PCB revision.
 3. ~~**No embedded verified mode.**~~ Superseded 2026-11-06: the on-device light client proves the tip and the RPC hash is compared with it (`docs/LIGHT_CLIENT.md`). RPC data is still never relabeled verified; only the tip comparison is.
 4. **History is small and volatile.** Backfill is 20 blocks per tip change; rings hold 480 points and render 240. Long ranges show honest low coverage. LittleFS/history restore is not implemented despite the reserved partition.
 5. **Provisioning is first-boot/menuconfig based.** NVS persists; no on-screen editor exists for SSID/password/URL. Reprovisioning with build defaults currently requires deliberate flash erasure.
@@ -163,3 +163,15 @@ Still unverified: touch-driven provisioning end-to-end (scan list → select →
 12. **Nav button text wrapping.** The default theme's button padding (~13–20 px per side at 130 DPI) left a 64 px button too narrow for "HOME". Padding is now 2 px and captions are single-line. Changing the RGB porch timing first was a misdiagnosis: the panel uses DE mode, and porches had no visible effect. They were reverted to 8/50/10 and 8/20/10.
 13. **Bottom-bar shift: actual root cause.** Item 12's padding change was not the fix. `CONFIG_LCD_RGB_RESTART_IN_VSYNC` (enabled earlier in this pass) restarts GDMA every frame via the driver's restart link, which begins `LCD_FIFO_PRESERVE_SIZE_PX` = 17 px into the buffer. That shifted the nav rows ~17 px left with wrap-around. Disabled; the driver still auto-restarts on detected desync. Confirmed fixed on device from a photo.
 14. **Black screen after flashing** was the bench capture script leaving RTS (wired to EN) asserted on close. Flashing was always correct. Capture scripts must set DTR/RTS low before open and leave them released; `stty -F /dev/ttyUSB0 -hupcl` stops close from toggling them. Opening the port still resets the board once (kernel raises the lines on open); that is harmless.
+
+## 2026-11-09 soak (light client + RPC, mainnet)
+
+Firmware `58b7882` on the Guition, powered hub, Wi-Fi to public mainnet RPC, light client to a pinned LAN peer. Serial log from `tools/serial_soak_logger.py` (not published; contains network details).
+
+- **Duration:** 2026-11-07 00:16 (power-on after re-flash) to 2026-11-09 11:57 ACDT. Device uptime 214,881 s, about 59.7 h. No resets, panics, or watchdogs after that boot.
+- **Light client:** 6,872 last-state proofs verified, none rejected. Last proven tip 20,964,599.
+- **Reorgs:** 14 one-block tip reorgs, each reported by the light client ("proven tip is no longer on the peer's chain"; the chains share the parent). The RPC hash differed from the proven one at 18 distinct heights, all at the tip during these forks. The badge needs two consecutive differing heights to show `RPC MISMATCH`. Badge changes are not logged, so the screen state during these events was not recorded.
+- **Errors:** 94 `E` lines, nearly all yamux `GO_AWAY code 0` (89) from the peer closing the session; the client reconnected each time.
+- **Memory:** internal heap 56,263 → 55,979 bytes free, minimum 46,503 bytes for the whole run (unchanged since the first sample). PSRAM free about 1.45 MB, steady. RPC task stack high-water mark 7,296 bytes. LVGL pool 53–54% used, 2–4% fragmentation.
+
+Not covered: physical power cycles, Wi-Fi drop and recovery, and a lying RPC endpoint.

@@ -1,6 +1,6 @@
 # CKB Chart — Guition ESP32-4848S040C LVGL dashboard
 
-**Status (2026-11-06): live on the Guition against public mainnet RPC, with the on-device light client proving each new tip from a pinned LAN peer and the RPC hash matching it in the device log. The device resumes from a checkpoint saved in NVS after a reboot; the badge policy is unit- and mutation-tested. Still open: a 24-hour soak with the light client running, a real `RPC MISMATCH` against a lying endpoint, testnet, and touch-driven Wi-Fi provisioning end to end. The board needs a powered hub or dedicated supply (it browns out on an unpowered one). See docs/LIGHT_CLIENT.md and docs/VALIDATION.md.**
+**Status (2026-11-09): live on the Guition against public mainnet RPC, with the on-device light client proving each new tip from a pinned LAN peer and the RPC hash matching it in the device log. A 59.7-hour soak (7–9 Nov) ran with no resets: 6,872 tip proofs, none rejected; 14 one-block tip reorgs handled; internal heap flat (min free 46,503 bytes all run). The device resumes from a checkpoint saved in NVS after a reboot; the badge policy is unit- and mutation-tested. Still open: a real `RPC MISMATCH` against a lying endpoint, testnet, and touch-driven Wi-Fi provisioning end to end. The board needs a powered hub or dedicated supply (it browns out on an unpowered one). See docs/LIGHT_CLIENT.md and docs/VALIDATION.md.**
 
 This is an observation-only 480x480 Nervos CKB dashboard. It has seven screens (Overview, Blocks, Transactions, Network, Economics, Capacity, Client), bottom navigation, swipe navigation, bounded charts, time-window controls, deterministic demo fixtures, and JSON-RPC mode. No wallet keys or signing are supported.
 
@@ -44,7 +44,7 @@ To regenerate them, build with `CONFIG_CKB_DEBUG_SCREENSHOTS=y` (in a separate b
 - `STALE`: the last valid RPC data remains visible while transport/parsing fails; missing data is not converted to zero.
 - Embedded light client: the device proves the mainnet tip itself with RFC44 last-state proofs (ckb-light-esp `3e47434`, from a pinned LAN peer) and compares it with the RPC endpoint's hash. `PROVEN` means only that the RPC agrees with that independently proven tip; `RPC MISMATCH` means it repeatedly did not. Charts stay RPC data under the labels above. See `docs/LIGHT_CLIENT.md` and `docs/UPSTREAM_AUDIT.md`.
 
-Capacity totals, global hashrate, active-address counts, finalized rewards, and supply estimates are not invented when the selected RPC cannot provide them.
+Global hashrate, active-address counts, finalized rewards, and circulating-supply estimates are not shown, because no RPC this dashboard trusts provides them. Capacity comes only from the header `dao` field (issued and occupied CKB, DAO rate).
 
 ## Reproducible build
 
@@ -87,13 +87,15 @@ idf.py -C firmware -p PORT flash monitor
 
 Use HTTPS with the enabled ESP certificate bundle for remote endpoints. Plain HTTP is intended only for an explicitly trusted LAN node. Mainnet and testnet responses must pass both the `get_blockchain_info` chain check and the genesis-hash check. Both hashes are pinned from CKB's published `docs/hashes.toml`.
 
-Confirm the target and serial port before flashing. The validated Guition used `/dev/ttyUSB0` (CH340) on this machine:
+Confirm the target before flashing. The Guition's USB-serial bridge is a CH340, and its `ttyUSB` number can change after a replug, so use the stable by-id path and check the chip MAC first:
 
 ```bash
-idf.py -C firmware -p /dev/ttyUSB0 flash monitor
+PORT=/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0
+esptool.py -p $PORT --after no_reset read_mac   # must print your board's MAC
+idf.py -C firmware -p $PORT flash monitor
 ```
 
-Do not select a port solely because it reports ESP32-S3; another attached ESP32-S3 may be a different device.
+Do not select a port solely because it reports ESP32-S3; another attached ESP32-S3 may be a different device. If a flash fails partway (USB error, "No bootable app partitions" on boot), re-flash at a lower baud, e.g. `-b 230400`.
 
 ## Operation and resource bounds
 
@@ -113,6 +115,10 @@ bash tools/run_host_tests.sh
 make -C upstream/ckb-light-esp/test_host clean test
 ```
 
-The project script runs the JSON-schema/demo contract test and native C tests for hex parsing, epoch boundaries, compact-target difficulty, ring wrapping/replacement, reorg invalidation, coverage, and downsampling.
+The project script runs the JSON-schema/demo contract test and native C tests for hex parsing, epoch boundaries, compact-target difficulty, ring wrapping/replacement, reorg invalidation, coverage, downsampling, header `dao` decoding, chart axis bounds, the light-client badge policy, and the screenshot encoder. The second command runs the light client's own host tests.
 
-Raw serial/flash logs are not published (they contain Wi-Fi scan results, LAN addresses and device MACs); `docs/VALIDATION.md` and `docs/LIGHT_CLIENT.md` record what they showed. Observed commands, logs, binary sizes, RPC schema checks, actual Guition results, runtime memory, and unresolved issues are in `docs/VALIDATION.md`. Logs are under `logs/`. Demo validation does not establish RPC, Wi-Fi, reconnection, or long-term stability.
+Raw serial/flash logs are not published (they contain Wi-Fi scan results, LAN addresses and device MACs); `docs/VALIDATION.md` and `docs/LIGHT_CLIENT.md` record what they showed. Observed commands, binary sizes, RPC schema checks, actual Guition results, runtime memory, the soak results, and unresolved issues are in `docs/VALIDATION.md`. `tools/serial_soak_logger.py` writes timestamped serial logs to the git-ignored `logs/` directory.
+
+## License
+
+MIT. See `LICENSE`.
