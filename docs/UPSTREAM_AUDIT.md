@@ -64,7 +64,7 @@ The shipping modes are deterministic `DEMO` and unverified but usable `FULL_NODE
 
 ## Re-audit at 3e47434
 
-- Branch `fix/lsp-pow-verify`, pinned commit `3e47434e` (2026-11-06), checked out at
+- Branch `fix/lsp-pow-verify` (merged to `master` by fast-forward on 2026-11-09), pinned commit `3e47434e` (2026-11-06), checked out at
   `upstream/ckb-light-esp` with no local patches.
 - The firmware links `ckb_core`, `ckb_transport`, `ckb_protocol`, `ckb_filter` and `ckb_session`
   from there (`firmware/CMakeLists.txt`, `EXTRA_COMPONENT_DIRS`).
